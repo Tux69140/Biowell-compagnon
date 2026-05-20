@@ -76,6 +76,7 @@ describe("représentativité", () => {
     expect(csv).toContain("Paramètres/Stress/Valeur;Paramètres;Stress;Valeur;");
   });
 
+
   it("génère un export détaillé CSV et XLS avec la valeur la plus proche", () => {
     const inputs = exampleFiles.map((fileName) => ({
       fileName,
