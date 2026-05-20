@@ -4,23 +4,6 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "test": "vitest run",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "latest",
-    "react-dom": "latest"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "typescript": "latest",
-    "vitest": "latest",
-    "jsdom": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest"
     "dev": "vite --host 0.0.0.0",
     "start": "npm run dev",
     "build": "tsc -b && vite build",
