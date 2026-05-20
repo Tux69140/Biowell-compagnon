@@ -203,66 +203,6 @@ export function App() {
       </section>
 
       <ResultPanel result={result} error={error} isAnalyzing={isAnalyzing} />
-      <div className="analysis-layout">
-        <section className="workspace-card">
-          <div className="workspace-header">
-            <div>
-              <p className="eyebrow">Étape 1</p>
-              <h2>Importer les CSV</h2>
-            </div>
-            <FileStatus files={fileNames} />
-          </div>
-
-          <label
-            className={`drop-zone ${isDragging ? "is-dragging" : ""}`}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setIsDragging(false);
-              void loadFiles(event.dataTransfer.files);
-            }}
-          >
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              multiple
-              onChange={(event) =>
-                event.currentTarget.files &&
-                void loadFiles(event.currentTarget.files)
-              }
-            />
-            <span className="drop-title">Glissez-déposez vos rapports CSV</span>
-            <span className="drop-subtitle">
-              ou cliquez pour sélectionner au moins 3 fichiers.
-            </span>
-          </label>
-
-          <div className="actions">
-            <button type="button" onClick={analyze} disabled={!canAnalyze}>
-              {isAnalyzing ? "Analyse en cours…" : "Analyser"}
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={reset}
-              disabled={files.length === 0 && !result && !error}
-            >
-              Réinitialiser
-            </button>
-            {result && (
-              <button type="button" className="secondary" onClick={exportCsv}>
-                Exporter les moyennes CSV
-              </button>
-            )}
-          </div>
-        </section>
-
-        <ResultPanel result={result} error={error} isAnalyzing={isAnalyzing} />
-      </div>
     </main>
   );
 }
@@ -270,18 +210,8 @@ export function App() {
 function FileStatus({ files }: { files: string[] }) {
   if (files.length === 0)
     return <p className="status muted">Aucun fichier importé.</p>;
+
   return (
-    <div className="status">
-      <strong>
-        {files.length} fichier{files.length > 1 ? "s" : ""} importé
-        {files.length > 1 ? "s" : ""}
-      </strong>
-      {files.length < 3 && (
-        <span className="hint">
-          Ajoutez encore {3 - files.length} fichier
-          {3 - files.length > 1 ? "s" : ""} pour lancer l&apos;analyse.
-        </span>
-      )}
     <details className="status" open={files.length < 4}>
       <summary>
         <strong>
@@ -291,7 +221,7 @@ function FileStatus({ files }: { files: string[] }) {
         {files.length < 3 && (
           <span className="hint">
             Ajoutez encore {3 - files.length} fichier
-            {3 - files.length > 1 ? "s" : ""}.
+            {3 - files.length > 1 ? "s" : ""} pour lancer l&apos;analyse.
           </span>
         )}
       </summary>
@@ -300,7 +230,6 @@ function FileStatus({ files }: { files: string[] }) {
           <li key={fileName}>{fileName}</li>
         ))}
       </ul>
-    </div>
     </details>
   );
 }
