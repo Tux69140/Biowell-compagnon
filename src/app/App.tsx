@@ -4,6 +4,11 @@ import {
   type RepresentativityResult,
 } from "../core/representativity";
 import { exportMeansCsv } from "../core/exportMeansCsv";
+import {
+  buildDetailedRows,
+  exportDetailedCsv,
+  exportDetailedXls,
+} from "../core/exportDetailed";
 
 type LoadedFile = {
   name: string;
@@ -74,6 +79,27 @@ export function App() {
     const blob = new Blob([exportMeansCsv(result.means)], {
       type: "text/csv;charset=utf-8",
     });
+    downloadBlob(blob, "moyennes-biowell.csv");
+  }
+
+  function exportDetailed() {
+    if (!result) return;
+    const rows = buildDetailedRows(result.means, result.validReports);
+    const fileNames = result.validReports.map((report) => report.fileName);
+    const blob = new Blob([exportDetailedCsv(rows, fileNames)], {
+      type: "text/csv;charset=utf-8",
+    });
+    downloadBlob(blob, "comparatif-biowell-detaille.csv");
+  }
+
+  function exportXls() {
+    if (!result) return;
+    const rows = buildDetailedRows(result.means, result.validReports);
+    const fileNames = result.validReports.map((report) => report.fileName);
+    const blob = new Blob([exportDetailedXls(rows, fileNames)], {
+      type: "application/vnd.ms-excel",
+    });
+    downloadBlob(blob, "comparatif-biowell-detaille.xls");
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -95,6 +121,11 @@ export function App() {
           <p className="eyebrow">Prototype local sans stockage</p>
           <h1>Sélection du rapport Bio-Well le plus représentatif</h1>
           <p className="intro">
+            Importez au moins 3 rapports CSV Bio-Well d&apos;une même personne
+            (fonction Export du logiciel Bio-Well). L&apos;application calcule
+            la moyenne de chaque paramètre commun aux rapports, puis sélectionne
+            le rapport dont les valeurs sont globalement les plus proches de ces
+            moyennes.
             Importez au moins 3 rapports CSV Bio-Well d&apos;une même personne.
             L&apos;application calcule la moyenne de chaque paramètre commun aux
             rapports, puis sélectionne le rapport dont les valeurs sont
@@ -108,6 +139,70 @@ export function App() {
         </div>
       </section>
 
+      <section className="workspace-card">
+        <label
+          className={`drop-zone ${isDragging ? "is-dragging" : ""}`}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setIsDragging(false);
+            void loadFiles(event.dataTransfer.files);
+          }}
+        >
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            multiple
+            onChange={(event) =>
+              event.currentTarget.files &&
+              void loadFiles(event.currentTarget.files)
+            }
+          />
+          <span className="drop-title">Glissez-déposez vos rapports CSV</span>
+          <span className="drop-subtitle">
+            ou cliquez pour sélectionner au moins 3 fichiers.
+          </span>
+        </label>
+
+        <div className="actions">
+          <button type="button" onClick={analyze} disabled={!canAnalyze}>
+            {isAnalyzing ? "Analyse en cours…" : "Analyser"}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={reset}
+            disabled={files.length === 0 && !result && !error}
+          >
+            Réinitialiser
+          </button>
+          {result && (
+            <>
+              <button type="button" className="secondary" onClick={exportCsv}>
+                Exporter les moyennes CSV (simple)
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={exportDetailed}
+              >
+                Exporter CSV détaillé
+              </button>
+              <button type="button" className="secondary" onClick={exportXls}>
+                Exporter XLS coloré
+              </button>
+            </>
+          )}
+        </div>
+
+        <FileStatus files={fileNames} />
+      </section>
+
+      <ResultPanel result={result} error={error} isAnalyzing={isAnalyzing} />
       <div className="analysis-layout">
         <section className="workspace-card">
           <div className="workspace-header">
@@ -176,6 +271,17 @@ function FileStatus({ files }: { files: string[] }) {
   if (files.length === 0)
     return <p className="status muted">Aucun fichier importé.</p>;
   return (
+    <div className="status">
+      <strong>
+        {files.length} fichier{files.length > 1 ? "s" : ""} importé
+        {files.length > 1 ? "s" : ""}
+      </strong>
+      {files.length < 3 && (
+        <span className="hint">
+          Ajoutez encore {3 - files.length} fichier
+          {3 - files.length > 1 ? "s" : ""} pour lancer l&apos;analyse.
+        </span>
+      )}
     <details className="status" open={files.length < 4}>
       <summary>
         <strong>
@@ -194,6 +300,7 @@ function FileStatus({ files }: { files: string[] }) {
           <li key={fileName}>{fileName}</li>
         ))}
       </ul>
+    </div>
     </details>
   );
 }
@@ -324,4 +431,13 @@ function getErrorProperty<T extends "rejectedReports" | "validCount">(
 
 function formatScore(score: number): string {
   return score.toLocaleString("fr-FR", { maximumFractionDigits: 6 });
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
 }

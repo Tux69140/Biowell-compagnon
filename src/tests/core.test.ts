@@ -5,6 +5,11 @@ import { parseCsv } from "../core/csvParser";
 import { parseBiowellReport, parseFrenchNumber } from "../core/biowellParser";
 import { analyzeReports } from "../core/representativity";
 import { exportMeansCsv } from "../core/exportMeansCsv";
+import {
+  buildDetailedRows,
+  exportDetailedCsv,
+  exportDetailedXls,
+} from "../core/exportDetailed";
 
 const root = process.cwd();
 const exampleFiles = [
@@ -69,6 +74,28 @@ describe("représentativité", () => {
       "cle;section;libelle;colonne;moyenne;nombre_fichiers",
     );
     expect(csv).toContain("Paramètres/Stress/Valeur;Paramètres;Stress;Valeur;");
+  });
+
+
+  it("génère un export détaillé CSV et XLS avec la valeur la plus proche", () => {
+    const inputs = exampleFiles.map((fileName) => ({
+      fileName,
+      text: readFileSync(join(root, "rapports_exemple", fileName), "utf8"),
+    }));
+
+    const result = analyzeReports(inputs);
+    const rows = buildDetailedRows(result.means, result.validReports);
+    const fileNames = result.validReports.map((report) => report.fileName);
+
+    const detailedCsv = exportDetailedCsv(rows, fileNames);
+    expect(detailedCsv.split("\n")[0]).toContain("moyenne_calculee");
+    expect(detailedCsv.split("\n")[0]).toContain(
+      "fichier_plus_proche_de_la_moyenne",
+    );
+
+    const xls = exportDetailedXls(rows, fileNames);
+    expect(xls).toContain("sClosest");
+    expect(xls).toContain("Worksheet");
   });
 
   it("conserve les égalités de score", () => {
