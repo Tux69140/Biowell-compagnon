@@ -270,18 +270,8 @@ export function App() {
 function FileStatus({ files }: { files: string[] }) {
   if (files.length === 0)
     return <p className="status muted">Aucun fichier importé.</p>;
+
   return (
-    <div className="status">
-      <strong>
-        {files.length} fichier{files.length > 1 ? "s" : ""} importé
-        {files.length > 1 ? "s" : ""}
-      </strong>
-      {files.length < 3 && (
-        <span className="hint">
-          Ajoutez encore {3 - files.length} fichier
-          {3 - files.length > 1 ? "s" : ""} pour lancer l&apos;analyse.
-        </span>
-      )}
     <details className="status" open={files.length < 4}>
       <summary>
         <strong>
@@ -291,7 +281,7 @@ function FileStatus({ files }: { files: string[] }) {
         {files.length < 3 && (
           <span className="hint">
             Ajoutez encore {3 - files.length} fichier
-            {3 - files.length > 1 ? "s" : ""}.
+            {3 - files.length > 1 ? "s" : ""} pour lancer l&apos;analyse.
           </span>
         )}
       </summary>
@@ -300,7 +290,6 @@ function FileStatus({ files }: { files: string[] }) {
           <li key={fileName}>{fileName}</li>
         ))}
       </ul>
-    </div>
     </details>
   );
 }
