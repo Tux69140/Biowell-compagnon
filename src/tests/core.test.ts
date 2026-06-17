@@ -130,4 +130,26 @@ describe("représentativité", () => {
       "c.csv",
     ]);
   });
+
+  it("analyse un CSV regroupé avec 3 rapports dans un seul fichier", () => {
+    const result = analyzeReports([
+      {
+        fileName: "Comparer les paramètres 2026-06-17 09_17.csv",
+        text: readFileSync(
+          join(root, "docs", "Comparer les paramètres 2026-06-17 09_17.csv"),
+          "utf8",
+        ),
+      },
+    ]);
+
+    expect(result.validReports).toHaveLength(3);
+    expect(result.rejectedReports).toHaveLength(0);
+    expect(result.winners.length).toBeGreaterThanOrEqual(1);
+    expect(
+      result.validReports
+        .find((report) => report.fileName.endsWith("2026-05-21 16:50"))
+        ?.metrics.get("Centres nerveux/Énergie/Centre du système nerveux 1")
+        ?.value,
+    ).toBe(4.04);
+  });
 });

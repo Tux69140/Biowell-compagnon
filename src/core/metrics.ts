@@ -12,6 +12,9 @@ export type MetricValue = {
 export type ParsedReport = {
   fileName: string;
   metrics: Map<MetricKey, MetricValue>;
+  sourceFile?: string;
+  timestamp?: string;
+  patientLabel?: string;
 };
 
 export type RejectedReport = {

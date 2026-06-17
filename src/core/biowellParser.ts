@@ -20,28 +20,35 @@ const ENTITY_HEADERS = new Set([
   "Secteur",
 ]);
 const MINIMUM_METRICS = 10;
+const TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
 
 export function parseBiowellReport(
   fileName: string,
   text: string,
 ): ParsedReport {
-  let rows: string[][];
   try {
-    rows = parseCsv(text);
+    return parseBiowellReportFromRows(fileName, parseCsv(text));
   } catch (error) {
     throw new Error(
       error instanceof Error ? error.message : "lecture impossible",
     );
   }
+}
 
-  if (rows.length === 0)
-    throw new Error("fichier vide ou structure CSV invalide");
+export function parseBiowellReportFromRows(
+  fileName: string,
+  rows: string[][],
+): ParsedReport {
+  if (rows.length === 0) throw new Error("fichier vide ou structure CSV invalide");
 
   const metrics = new Map<string, MetricValue>();
   let currentSection = "";
   let currentHeaders: string[] = [];
   let currentSubsection = "";
   let currentGroup = "";
+  let timestampColumnIndex: number | null = null;
+  let timestamp: string | undefined;
+  let patientLabel: string | undefined;
 
   rows.forEach((row, rowIndexZeroBased) => {
     const rowIndex = rowIndexZeroBased + 1;
@@ -52,6 +59,22 @@ export function parseBiowellReport(
       .filter((index) => index >= 0);
 
     if (nonEmpty.length === 0) return;
+
+    if (rowIndex === 1) {
+      const foundTimestamp = findTimestampCell(cells);
+      if (foundTimestamp) {
+        timestampColumnIndex = foundTimestamp.index;
+        timestamp = foundTimestamp.value;
+      }
+    }
+
+    if (
+      rowIndex === 2 &&
+      timestampColumnIndex !== null &&
+      timestampColumnIndex < cells.length
+    ) {
+      patientLabel = cells[timestampColumnIndex] || undefined;
+    }
 
     const section = nonEmpty.find((cell) => KNOWN_SECTIONS.has(cell));
     if (section && numericIndexes.length === 0 && nonEmpty.length <= 2) {
@@ -119,7 +142,13 @@ export function parseBiowellReport(
     );
   }
 
-  return { fileName, metrics };
+  return {
+    fileName,
+    metrics,
+    sourceFile: fileName,
+    timestamp,
+    patientLabel,
+  };
 }
 
 function normalizeRow(row: string[]): string[] {
@@ -136,6 +165,20 @@ function looksLikeHeader(cells: string[]): boolean {
 function isNumericCell(cell: string): boolean {
   if (cell === "-") return true;
   return /^-?\d+(?:[,.]\d+)?$/.test(cell.trim());
+}
+
+export function isTimestampCell(cell: string): boolean {
+  return TIMESTAMP_PATTERN.test(cell.trim());
+}
+
+function findTimestampCell(cells: string[]): { index: number; value: string } | null {
+  for (let index = 0; index < cells.length; index += 1) {
+    const cell = cells[index];
+    if (isTimestampCell(cell)) {
+      return { index, value: cell };
+    }
+  }
+  return null;
 }
 
 export function parseFrenchNumber(cell: string): number {

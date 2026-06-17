@@ -4,7 +4,11 @@ import type {
   ParsedReport,
   RejectedReport,
 } from "./metrics";
-import { parseBiowellReport } from "./biowellParser";
+import { parseCsv } from "./csvParser";
+import {
+  parseBiowellReportFromRows,
+} from "./biowellParser";
+import { parseAggregatedBiowellReportFromRows } from "./aggregatedBiowellParser";
 
 export type ReportInput = {
   fileName: string;
@@ -16,10 +20,16 @@ export type ReportScore = {
   score: number;
 };
 
+export type AnalysisWarning = {
+  fileName: string;
+  reason: string;
+};
+
 export type RepresentativityResult = {
   validReports: ParsedReport[];
   rejectedReports: RejectedReport[];
   commonMetricCount: number;
+  warnings: AnalysisWarning[];
   means: MeanMetric[];
   scores: ReportScore[];
   winners: ReportScore[];
@@ -30,28 +40,83 @@ export type RepresentativityResult = {
 const TIE_TOLERANCE = 1e-9;
 
 export function analyzeReports(inputs: ReportInput[]): RepresentativityResult {
-  const validReports: ParsedReport[] = [];
+  const parsedReports: ParsedReport[] = [];
   const rejectedReports: RejectedReport[] = [];
+  const warnings: AnalysisWarning[] = [];
+  const seenTimestamps = new Map<string, string>();
+  const patientLabels = new Set<string>();
 
   inputs.forEach((input) => {
+    let rows: string[][];
     try {
-      validReports.push(parseBiowellReport(input.fileName, input.text));
+      rows = parseCsv(input.text);
     } catch (error) {
       rejectedReports.push({
         fileName: input.fileName,
-        reason:
-          error instanceof Error ? error.message : "fichier non exploitable",
+        reason: error instanceof Error ? error.message : "fichier non exploitable",
+      });
+      return;
+    }
+
+    const aggregateResult = parseAggregatedBiowellReportFromRows(
+      input.fileName,
+      rows,
+    );
+
+    if (aggregateResult) {
+      parsedReports.push(...aggregateResult.reports);
+      rejectedReports.push(...aggregateResult.rejectedReports);
+      return;
+    }
+
+    try {
+      parsedReports.push(parseBiowellReportFromRows(input.fileName, rows));
+    } catch (error) {
+      rejectedReports.push({
+        fileName: input.fileName,
+        reason: error instanceof Error ? error.message : "fichier non exploitable",
       });
     }
   });
 
+  const validReports: ParsedReport[] = [];
+  parsedReports.forEach((report) => {
+    if (report.timestamp) {
+      const duplicate = seenTimestamps.get(report.timestamp);
+      if (duplicate) {
+        rejectedReports.push({
+          fileName: report.fileName,
+          reason: `doublon ignoré : même horodatage que ${duplicate}`,
+        });
+        return;
+      }
+      seenTimestamps.set(report.timestamp, report.fileName);
+    }
+
+    validReports.push(report);
+    if (report.patientLabel) {
+      patientLabels.add(report.patientLabel);
+    }
+  });
+
+  if (patientLabels.size > 1) {
+    warnings.push({
+      fileName: "Cohérence patient",
+      reason:
+        `Plusieurs identités patient ont été détectées (${[
+          ...patientLabels,
+        ].join(", ")}). L'analyse continue sans exclusion automatique.`,
+    });
+  }
+
   if (validReports.length < 3) {
     throw Object.assign(
       new Error(
-        "Analyse impossible : au moins 3 fichiers CSV Bio-Well exploitables sont nécessaires.",
+        "Analyse impossible : au moins 3 rapports CSV Bio-Well exploitables sont nécessaires.",
       ),
       {
         rejectedReports,
+        warnings,
         validCount: validReports.length,
       },
     );
@@ -61,10 +126,11 @@ export function analyzeReports(inputs: ReportInput[]): RepresentativityResult {
   if (commonKeys.length === 0) {
     throw Object.assign(
       new Error(
-        "Analyse impossible : aucun paramètre numérique commun aux fichiers exploitables.",
+        "Analyse impossible : aucun paramètre numérique commun aux rapports exploitables.",
       ),
       {
         rejectedReports,
+        warnings,
         validCount: validReports.length,
       },
     );
@@ -98,6 +164,7 @@ export function analyzeReports(inputs: ReportInput[]): RepresentativityResult {
     validReports,
     rejectedReports,
     commonMetricCount: commonKeys.length,
+    warnings,
     means,
     scores,
     winners,
@@ -153,7 +220,7 @@ function buildExplanation(
 ): string {
   const names = winners.map((winner) => `« ${winner.fileName} »`).join(", ");
   if (winners.length > 1) {
-    return `${winners.length} fichiers sont aussi représentatifs selon le score calculé : ${names}. Les moyennes ont été calculées paramètre par paramètre sur ${commonMetricCount.toLocaleString("fr-FR")} paramètres communs issus de ${fileCount} fichiers exploitables.`;
+    return `${winners.length} rapports sont aussi représentatifs selon le score calculé : ${names}. Les moyennes ont été calculées paramètre par paramètre sur ${commonMetricCount.toLocaleString("fr-FR")} paramètres communs issus de ${fileCount} rapports exploitables.`;
   }
-  return `Le fichier ${names} est le plus représentatif, car son écart moyen aux moyennes calculées est le plus faible parmi les ${fileCount} fichiers analysés. Les moyennes ont été calculées paramètre par paramètre sur ${commonMetricCount.toLocaleString("fr-FR")} paramètres communs.`;
+  return `Le rapport ${names} est le plus représentatif, car son écart moyen aux moyennes calculées est le plus faible parmi les ${fileCount} rapports analysés. Les moyennes ont été calculées paramètre par paramètre sur ${commonMetricCount.toLocaleString("fr-FR")} paramètres communs.`;
 }

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   analyzeReports,
+  type AnalysisWarning,
   type RepresentativityResult,
 } from "../core/representativity";
 import { exportMeansCsv } from "../core/exportMeansCsv";
@@ -19,6 +20,7 @@ type AnalysisError = {
   message: string;
   rejectedReports?: { fileName: string; reason: string }[];
   validCount?: number;
+  warnings?: AnalysisWarning[];
 };
 
 export function App() {
@@ -28,7 +30,7 @@ export function App() {
   const [result, setResult] = useState<RepresentativityResult | null>(null);
   const [error, setError] = useState<AnalysisError | null>(null);
 
-  const canAnalyze = files.length >= 3 && !isAnalyzing;
+  const canAnalyze = files.length >= 1 && !isAnalyzing;
   const fileNames = useMemo(() => files.map((file) => file.name), [files]);
 
   async function loadFiles(fileList: FileList | File[]) {
@@ -67,6 +69,7 @@ export function App() {
               : "Analyse impossible.",
           rejectedReports: getErrorProperty(analysisError, "rejectedReports"),
           validCount: getErrorProperty(analysisError, "validCount"),
+          warnings: getErrorProperty(analysisError, "warnings"),
         });
       } finally {
         setIsAnalyzing(false);
@@ -116,14 +119,9 @@ export function App() {
           <h1>Sélection du rapport Bio-Well le plus représentatif</h1>
           <p className="intro">
             Importez au moins 3 rapports CSV Bio-Well d&apos;une même personne
-            (fonction Export du logiciel Bio-Well). L&apos;application calcule
-            la moyenne de chaque paramètre commun aux rapports, puis sélectionne
-            le rapport dont les valeurs sont globalement les plus proches de ces
-            moyennes.
-            Importez au moins 3 rapports CSV Bio-Well d&apos;une même personne.
-            L&apos;application calcule la moyenne de chaque paramètre commun aux
-            rapports, puis sélectionne le rapport dont les valeurs sont
-            globalement les plus proches de ces moyennes.
+            (fonction Export du logiciel Bio-Well) ou un CSV agrégé. L&apos;application
+            calcule la moyenne de chaque paramètre commun aux rapports, puis
+            sélectionne le rapport le plus proche de ces moyennes.
           </p>
         </div>
         <div className="warning" role="note">
@@ -158,7 +156,7 @@ export function App() {
           />
           <span className="drop-title">Glissez-déposez vos rapports CSV</span>
           <span className="drop-subtitle">
-            ou cliquez pour sélectionner au moins 3 fichiers.
+            ou cliquez pour importer vos fichiers (au moins 3 rapports exploitables).
           </span>
         </label>
 
@@ -212,12 +210,6 @@ function FileStatus({ files }: { files: string[] }) {
           {files.length} fichier{files.length > 1 ? "s" : ""} importé
           {files.length > 1 ? "s" : ""}
         </strong>
-        {files.length < 3 && (
-          <span className="hint">
-            Ajoutez encore {3 - files.length} fichier
-            {3 - files.length > 1 ? "s" : ""} pour lancer l&apos;analyse.
-          </span>
-        )}
       </summary>
       <ul className="file-list">
         {files.map((fileName) => (
@@ -250,8 +242,14 @@ function ResultPanel({
         <h2>Analyse impossible</h2>
         <p>{error.message}</p>
         {typeof error.validCount === "number" && (
-          <p>{error.validCount} fichier(s) exploitable(s) détecté(s).</p>
+          <p>{error.validCount} rapport(s) exploitable(s) détecté(s).</p>
         )}
+        <NoticeList
+          title="Avertissements"
+          notices={error.warnings ?? []}
+          emptyMessage="Aucun avertissement."
+          noticeType="warning"
+        />
         <RejectedList rejectedReports={error.rejectedReports ?? []} />
       </section>
     );
@@ -272,7 +270,7 @@ function ResultPanel({
       <div className="metrics-grid">
         <div>
           <span>{result.validReports.length}</span>
-          <small>fichiers analysés</small>
+          <small>rapports analysés</small>
         </div>
         <div>
           <span>{result.commonMetricCount.toLocaleString("fr-FR")}</span>
@@ -283,6 +281,12 @@ function ResultPanel({
           <small>meilleur écart moyen</small>
         </div>
       </div>
+      <NoticeList
+        title="Avertissements"
+        notices={result.warnings}
+        emptyMessage=""
+        noticeType="warning"
+      />
       {result.distantReports.length > 0 && (
         <div className="notice">
           <strong>
@@ -302,6 +306,42 @@ function ResultPanel({
   );
 }
 
+function NoticeList({
+  title,
+  notices,
+  emptyMessage,
+  noticeType,
+}: {
+  title: string;
+  notices: { fileName: string; reason: string }[];
+  emptyMessage: string;
+  noticeType: "warning" | "rejected";
+}) {
+  if (notices.length === 0 && !emptyMessage) return null;
+  if (notices.length === 0) {
+    return (
+      <div className="notice">
+        <strong>{title} :</strong> {emptyMessage}
+      </div>
+    );
+  }
+
+  const className = noticeType === "warning" ? "notice" : "notice rejected";
+
+  return (
+    <div className={className}>
+      <strong>{title} :</strong>
+      <ul>
+        {notices.map((notice) => (
+          <li key={notice.fileName + notice.reason}>
+            {notice.fileName} : {notice.reason}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function RejectedList({
   rejectedReports,
 }: {
@@ -310,7 +350,7 @@ function RejectedList({
   if (rejectedReports.length === 0) return null;
   return (
     <div className="notice rejected">
-      <strong>Fichiers ignorés :</strong>
+      <strong>Rapports ignorés :</strong>
       <ul>
         {rejectedReports.map((report) => (
           <li key={report.fileName}>
@@ -342,7 +382,12 @@ function mergeFilesByName(
   );
 }
 
-function getErrorProperty<T extends "rejectedReports" | "validCount">(
+function getErrorProperty<
+  T extends
+    | "rejectedReports"
+    | "validCount"
+    | "warnings",
+>(
   error: unknown,
   key: T,
 ): AnalysisError[T] | undefined {
