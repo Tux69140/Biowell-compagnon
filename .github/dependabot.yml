@@ -1,0 +1,21 @@
+# Mises à jour des dépendances, tous les deux mois (le 1er, à 6 h).
+# Les alertes de sécurité restent immédiates, indépendamment de ce rythme.
+# Les petites mises à jour arrivent en une seule PR par partie ; chaque
+# changement de génération (majeure) arrive seul : un signal à étudier.
+version: 2
+updates:
+  # Paquets JavaScript
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: cron
+      cronjob: 0 6 1 */2 *
+      timezone: Europe/Paris
+    groups:
+      js-mineures:
+        update-types:
+          - minor
+          - patch
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore(deps)
