@@ -5,11 +5,7 @@ import {
   type RepresentativityResult,
 } from "../core/representativity";
 import { exportMeansCsv } from "../core/exportMeansCsv";
-import {
-  buildDetailedRows,
-  exportDetailedCsv,
-  exportDetailedXls,
-} from "../core/exportDetailed";
+import { buildDetailedRows, exportDetailedCsv, exportDetailedXls } from "../core/exportDetailed";
 
 type LoadedFile = {
   name: string;
@@ -34,14 +30,12 @@ export function App() {
   const fileNames = useMemo(() => files.map((file) => file.name), [files]);
 
   async function loadFiles(fileList: FileList | File[]) {
-    const csvFiles = [...fileList].filter((file) =>
-      file.name.toLowerCase().endsWith(".csv"),
-    );
+    const csvFiles = [...fileList].filter((file) => file.name.toLowerCase().endsWith(".csv"));
     const loadedFiles = await Promise.all(
       csvFiles.map(async (file) => ({
         name: file.name,
         text: await readTextFile(file),
-      })),
+      }))
     );
 
     setFiles((current) => mergeFilesByName(current, loadedFiles));
@@ -56,17 +50,10 @@ export function App() {
 
     window.setTimeout(() => {
       try {
-        setResult(
-          analyzeReports(
-            files.map((file) => ({ fileName: file.name, text: file.text })),
-          ),
-        );
+        setResult(analyzeReports(files.map((file) => ({ fileName: file.name, text: file.text }))));
       } catch (analysisError) {
         setError({
-          message:
-            analysisError instanceof Error
-              ? analysisError.message
-              : "Analyse impossible.",
+          message: analysisError instanceof Error ? analysisError.message : "Analyse impossible.",
           rejectedReports: getErrorProperty(analysisError, "rejectedReports"),
           validCount: getErrorProperty(analysisError, "validCount"),
           warnings: getErrorProperty(analysisError, "warnings"),
@@ -118,16 +105,15 @@ export function App() {
           <p className="eyebrow">Prototype local sans stockage</p>
           <h1>Sélection du rapport Bio-Well le plus représentatif</h1>
           <p className="intro">
-            Importez au moins 3 rapports CSV Bio-Well d&apos;une même personne
-            (fonction Export du logiciel Bio-Well) ou un CSV agrégé. L&apos;application
-            calcule la moyenne de chaque paramètre commun aux rapports, puis
-            sélectionne le rapport le plus proche de ces moyennes.
+            Importez au moins 3 rapports CSV Bio-Well d&apos;une même personne (fonction Export du
+            logiciel Bio-Well) ou un CSV agrégé. L&apos;application calcule la moyenne de chaque
+            paramètre commun aux rapports, puis sélectionne le rapport le plus proche de ces
+            moyennes.
           </p>
         </div>
         <div className="warning" role="note">
-          Cette application fournit une aide statistique à la comparaison de
-          rapports Bio-Well. Elle ne constitue pas un dispositif médical et ne
-          produit aucun diagnostic.
+          Cette application fournit une aide statistique à la comparaison de rapports Bio-Well. Elle
+          ne constitue pas un dispositif médical et ne produit aucun diagnostic.
         </div>
       </section>
 
@@ -150,8 +136,7 @@ export function App() {
             accept=".csv,text/csv"
             multiple
             onChange={(event) =>
-              event.currentTarget.files &&
-              void loadFiles(event.currentTarget.files)
+              event.currentTarget.files && void loadFiles(event.currentTarget.files)
             }
           />
           <span className="drop-title">Glissez-déposez vos rapports CSV</span>
@@ -177,11 +162,7 @@ export function App() {
               <button type="button" className="secondary" onClick={exportCsv}>
                 Exporter les moyennes CSV (simple)
               </button>
-              <button
-                type="button"
-                className="secondary"
-                onClick={exportDetailed}
-              >
+              <button type="button" className="secondary" onClick={exportDetailed}>
                 Exporter CSV détaillé
               </button>
               <button type="button" className="secondary" onClick={exportXls}>
@@ -200,8 +181,7 @@ export function App() {
 }
 
 function FileStatus({ files }: { files: string[] }) {
-  if (files.length === 0)
-    return <p className="status muted">Aucun fichier importé.</p>;
+  if (files.length === 0) return <p className="status muted">Aucun fichier importé.</p>;
 
   return (
     <details className="status" open={files.length < 4}>
@@ -289,9 +269,7 @@ function ResultPanel({
       />
       {result.distantReports.length > 0 && (
         <div className="notice">
-          <strong>
-            Rapport(s) très éloigné(s) signalé(s), sans exclusion automatique :
-          </strong>
+          <strong>Rapport(s) très éloigné(s) signalé(s), sans exclusion automatique :</strong>
           <ul>
             {result.distantReports.map((report) => (
               <li key={report.fileName}>
@@ -371,25 +349,15 @@ async function readTextFile(file: File): Promise<string> {
   }
 }
 
-function mergeFilesByName(
-  current: LoadedFile[],
-  next: LoadedFile[],
-): LoadedFile[] {
+function mergeFilesByName(current: LoadedFile[], next: LoadedFile[]): LoadedFile[] {
   const merged = new Map(current.map((file) => [file.name, file]));
   next.forEach((file) => merged.set(file.name, file));
-  return [...merged.values()].sort((a, b) =>
-    a.name.localeCompare(b.name, "fr"),
-  );
+  return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name, "fr"));
 }
 
-function getErrorProperty<
-  T extends
-    | "rejectedReports"
-    | "validCount"
-    | "warnings",
->(
+function getErrorProperty<T extends "rejectedReports" | "validCount" | "warnings">(
   error: unknown,
-  key: T,
+  key: T
 ): AnalysisError[T] | undefined {
   if (typeof error === "object" && error !== null && key in error) {
     return (error as AnalysisError)[key];

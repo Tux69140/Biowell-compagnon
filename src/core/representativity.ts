@@ -1,13 +1,6 @@
-import type {
-  MeanMetric,
-  MetricKey,
-  ParsedReport,
-  RejectedReport,
-} from "./metrics";
+import type { MeanMetric, MetricKey, ParsedReport, RejectedReport } from "./metrics";
 import { parseCsv } from "./csvParser";
-import {
-  parseBiowellReportFromRows,
-} from "./biowellParser";
+import { parseBiowellReportFromRows } from "./biowellParser";
 import { parseAggregatedBiowellReportFromRows } from "./aggregatedBiowellParser";
 
 export type ReportInput = {
@@ -58,10 +51,7 @@ export function analyzeReports(inputs: ReportInput[]): RepresentativityResult {
       return;
     }
 
-    const aggregateResult = parseAggregatedBiowellReportFromRows(
-      input.fileName,
-      rows,
-    );
+    const aggregateResult = parseAggregatedBiowellReportFromRows(input.fileName, rows);
 
     if (aggregateResult) {
       parsedReports.push(...aggregateResult.reports);
@@ -102,37 +92,34 @@ export function analyzeReports(inputs: ReportInput[]): RepresentativityResult {
   if (patientLabels.size > 1) {
     warnings.push({
       fileName: "Cohérence patient",
-      reason:
-        `Plusieurs identités patient ont été détectées (${[
-          ...patientLabels,
-        ].join(", ")}). L'analyse continue sans exclusion automatique.`,
+      reason: `Plusieurs identités patient ont été détectées (${[...patientLabels].join(
+        ", "
+      )}). L'analyse continue sans exclusion automatique.`,
     });
   }
 
   if (validReports.length < 3) {
     throw Object.assign(
       new Error(
-        "Analyse impossible : au moins 3 rapports CSV Bio-Well exploitables sont nécessaires.",
+        "Analyse impossible : au moins 3 rapports CSV Bio-Well exploitables sont nécessaires."
       ),
       {
         rejectedReports,
         warnings,
         validCount: validReports.length,
-      },
+      }
     );
   }
 
   const commonKeys = intersectMetricKeys(validReports);
   if (commonKeys.length === 0) {
     throw Object.assign(
-      new Error(
-        "Analyse impossible : aucun paramètre numérique commun aux rapports exploitables.",
-      ),
+      new Error("Analyse impossible : aucun paramètre numérique commun aux rapports exploitables."),
       {
         rejectedReports,
         warnings,
         validCount: validReports.length,
-      },
+      }
     );
   }
 
@@ -142,23 +129,15 @@ export function analyzeReports(inputs: ReportInput[]): RepresentativityResult {
     .map((report) => ({
       fileName: report.fileName,
       score: average(
-        commonKeys.map((key) =>
-          Math.abs(report.metrics.get(key)!.value - meanByKey.get(key)!),
-        ),
+        commonKeys.map((key) => Math.abs(report.metrics.get(key)!.value - meanByKey.get(key)!))
       ),
     }))
-    .sort(
-      (a, b) => a.score - b.score || a.fileName.localeCompare(b.fileName, "fr"),
-    );
+    .sort((a, b) => a.score - b.score || a.fileName.localeCompare(b.fileName, "fr"));
 
   const bestScore = scores[0].score;
-  const winners = scores.filter(
-    (score) => Math.abs(score.score - bestScore) <= TIE_TOLERANCE,
-  );
+  const winners = scores.filter((score) => Math.abs(score.score - bestScore) <= TIE_TOLERANCE);
   const median = medianOf(scores.map((score) => score.score));
-  const distantReports = scores.filter(
-    (score) => median > 0 && score.score > 2 * median,
-  );
+  const distantReports = scores.filter((score) => median > 0 && score.score > 2 * median);
 
   return {
     validReports,
@@ -169,11 +148,7 @@ export function analyzeReports(inputs: ReportInput[]): RepresentativityResult {
     scores,
     winners,
     distantReports,
-    explanation: buildExplanation(
-      winners,
-      validReports.length,
-      commonKeys.length,
-    ),
+    explanation: buildExplanation(winners, validReports.length, commonKeys.length),
   };
 }
 
@@ -184,10 +159,7 @@ function intersectMetricKeys(reports: ParsedReport[]): MetricKey[] {
     .sort((a, b) => a.localeCompare(b, "fr"));
 }
 
-function computeMeans(
-  reports: ParsedReport[],
-  keys: MetricKey[],
-): MeanMetric[] {
+function computeMeans(reports: ParsedReport[], keys: MetricKey[]): MeanMetric[] {
   return keys.map((key) => {
     const firstMetric = reports[0].metrics.get(key)!;
     return {
@@ -208,15 +180,13 @@ function average(values: number[]): number {
 function medianOf(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0
-    ? (sorted[middle - 1] + sorted[middle]) / 2
-    : sorted[middle];
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
 }
 
 function buildExplanation(
   winners: ReportScore[],
   fileCount: number,
-  commonMetricCount: number,
+  commonMetricCount: number
 ): string {
   const names = winners.map((winner) => `« ${winner.fileName} »`).join(", ");
   if (winners.length > 1) {

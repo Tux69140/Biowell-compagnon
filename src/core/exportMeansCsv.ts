@@ -1,14 +1,7 @@
 import type { MeanMetric } from "./metrics";
 
 export function exportMeansCsv(means: MeanMetric[]): string {
-  const header = [
-    "cle",
-    "section",
-    "libelle",
-    "colonne",
-    "moyenne",
-    "nombre_fichiers",
-  ];
+  const header = ["cle", "section", "libelle", "colonne", "moyenne", "nombre_fichiers"];
   const rows = means.map((mean) => [
     mean.key,
     mean.section,
@@ -17,9 +10,7 @@ export function exportMeansCsv(means: MeanMetric[]): string {
     formatFrenchNumber(mean.mean),
     String(mean.fileCount),
   ]);
-  return [header, ...rows]
-    .map((row) => row.map(escapeCsvCell).join(";"))
-    .join("\n");
+  return [header, ...rows].map((row) => row.map(escapeCsvCell).join(";")).join("\n");
 }
 
 function formatFrenchNumber(value: number): string {

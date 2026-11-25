@@ -1,13 +1,7 @@
 import type { ParsedReport, RejectedReport } from "./metrics";
 import { isTimestampCell, parseBiowellReportFromRows } from "./biowellParser";
 
-const SHARED_HEADER_LABELS = new Set([
-  "Nom",
-  "Système",
-  "Organe",
-  "Doigt",
-  "Secteur",
-]);
+const SHARED_HEADER_LABELS = new Set(["Nom", "Système", "Organe", "Doigt", "Secteur"]);
 
 export type AggregatedParseResult = {
   reports: ParsedReport[];
@@ -16,7 +10,7 @@ export type AggregatedParseResult = {
 
 export function parseAggregatedBiowellReportFromRows(
   fileName: string,
-  rows: string[][],
+  rows: string[][]
 ): AggregatedParseResult | null {
   if (rows.length < 3) return null;
 
@@ -37,24 +31,16 @@ export function parseAggregatedBiowellReportFromRows(
 
   for (const { timestamp, columnIndex } of timeColumns) {
     const patient = patientLine[columnIndex]?.trim();
-    const displayName = patient
-      ? `${patient} - ${timestamp}`
-      : `${baseName} - ${timestamp}`;
-    const normalizedRows = rows.map((row) =>
-      normalizeAggregatedRow(row, columnIndex),
-    );
+    const displayName = patient ? `${patient} - ${timestamp}` : `${baseName} - ${timestamp}`;
+    const normalizedRows = rows.map((row) => normalizeAggregatedRow(row, columnIndex));
 
     try {
-      reports.push(
-        parseBiowellReportFromRows(displayName, normalizedRows),
-      );
+      reports.push(parseBiowellReportFromRows(displayName, normalizedRows));
     } catch (error) {
       rejectedReports.push({
         fileName: displayName,
         reason:
-          error instanceof Error
-            ? error.message
-            : "rapport individuel dérivé non exploitable",
+          error instanceof Error ? error.message : "rapport individuel dérivé non exploitable",
       });
     }
   }
@@ -65,14 +51,9 @@ export function parseAggregatedBiowellReportFromRows(
 function normalizeAggregatedRow(row: string[], columnIndex: number): string[] {
   const currentValue = row[columnIndex] ?? "";
   const sharedHeaderValue = row[2] ?? "";
-  const value =
-    currentValue || (isSharedHeaderRow(row) ? sharedHeaderValue : "");
+  const value = currentValue || (isSharedHeaderRow(row) ? sharedHeaderValue : "");
 
-  return [
-    row[0] ?? "",
-    row[1] ?? "",
-    value,
-  ];
+  return [row[0] ?? "", row[1] ?? "", value];
 }
 
 function isSharedHeaderRow(row: string[]): boolean {

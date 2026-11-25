@@ -4,7 +4,7 @@
 # changement de génération (majeure) arrive seul : un signal à étudier.
 version: 2
 updates:
-  # Paquets JavaScript
+  # Paquets JavaScript (l’écosystème « npm » de Dependabot couvre aussi pnpm)
   - package-ecosystem: npm
     directory: /
     schedule:

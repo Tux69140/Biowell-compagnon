@@ -5,11 +5,7 @@ import { parseCsv } from "../core/csvParser";
 import { parseBiowellReport, parseFrenchNumber } from "../core/biowellParser";
 import { analyzeReports } from "../core/representativity";
 import { exportMeansCsv } from "../core/exportMeansCsv";
-import {
-  buildDetailedRows,
-  exportDetailedCsv,
-  exportDetailedXls,
-} from "../core/exportDetailed";
+import { buildDetailedRows, exportDetailedCsv, exportDetailedXls } from "../core/exportDetailed";
 
 const root = process.cwd();
 const exampleFiles = [
@@ -35,21 +31,14 @@ describe("parsing CSV", () => {
 
 describe("parser Bio-Well", () => {
   it("extrait des clés contextualisées des rapports exemples", () => {
-    const text = readFileSync(
-      join(root, "rapports_exemple", exampleFiles[0]),
-      "utf8",
-    );
+    const text = readFileSync(join(root, "rapports_exemple", exampleFiles[0]), "utf8");
     const report = parseBiowellReport(exampleFiles[0], text);
 
     expect(report.metrics.size).toBeGreaterThan(1_000);
     expect(report.metrics.get("Paramètres/Stress/Valeur")?.value).toBe(3.05);
-    expect(report.metrics.get("Champs d'énergie/Gauche/Zone")?.value).toBe(
-      68182,
-    );
+    expect(report.metrics.get("Champs d'énergie/Gauche/Zone")?.value).toBe(68182);
     expect(
-      report.metrics.get(
-        "Les doigts et les secteurs/Zone/Pouce gauche/Image entière",
-      )?.value,
+      report.metrics.get("Les doigts et les secteurs/Zone/Pouce gauche/Image entière")?.value
     ).toBe(9864);
   });
 });
@@ -70,12 +59,9 @@ describe("représentativité", () => {
     expect(result.explanation).toContain("plus représentatif");
 
     const csv = exportMeansCsv(result.means);
-    expect(csv.split("\n")[0]).toBe(
-      "cle;section;libelle;colonne;moyenne;nombre_fichiers",
-    );
+    expect(csv.split("\n")[0]).toBe("cle;section;libelle;colonne;moyenne;nombre_fichiers");
     expect(csv).toContain("Paramètres/Stress/Valeur;Paramètres;Stress;Valeur;");
   });
-
 
   it("génère un export détaillé CSV et XLS avec la valeur la plus proche", () => {
     const inputs = exampleFiles.map((fileName) => ({
@@ -89,9 +75,7 @@ describe("représentativité", () => {
 
     const detailedCsv = exportDetailedCsv(rows, fileNames);
     expect(detailedCsv.split("\n")[0]).toContain("moyenne_calculee");
-    expect(detailedCsv.split("\n")[0]).toContain(
-      "fichier_plus_proche_de_la_moyenne",
-    );
+    expect(detailedCsv.split("\n")[0]).toContain("fichier_plus_proche_de_la_moyenne");
 
     const xls = exportDetailedXls(rows, fileNames);
     expect(xls).toContain("sClosest");
@@ -124,11 +108,7 @@ describe("représentativité", () => {
       { fileName: "c.csv", text },
     ]);
 
-    expect(result.winners.map((winner) => winner.fileName)).toEqual([
-      "a.csv",
-      "b.csv",
-      "c.csv",
-    ]);
+    expect(result.winners.map((winner) => winner.fileName)).toEqual(["a.csv", "b.csv", "c.csv"]);
   });
 
   it("analyse un CSV regroupé avec 3 rapports dans un seul fichier", () => {
@@ -137,7 +117,7 @@ describe("représentativité", () => {
         fileName: "Comparer les paramètres 2026-06-17 09_17.csv",
         text: readFileSync(
           join(root, "docs", "Comparer les paramètres 2026-06-17 09_17.csv"),
-          "utf8",
+          "utf8"
         ),
       },
     ]);
@@ -148,8 +128,7 @@ describe("représentativité", () => {
     expect(
       result.validReports
         .find((report) => report.fileName.endsWith("2026-05-21 16:50"))
-        ?.metrics.get("Centres nerveux/Énergie/Centre du système nerveux 1")
-        ?.value,
+        ?.metrics.get("Centres nerveux/Énergie/Centre du système nerveux 1")?.value
     ).toBe(4.04);
   });
 });

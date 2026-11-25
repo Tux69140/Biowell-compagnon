@@ -12,33 +12,19 @@ const KNOWN_SECTIONS = new Set([
   "Les doigts et les secteurs",
 ]);
 
-const ENTITY_HEADERS = new Set([
-  "Nom",
-  "Système",
-  "Organe",
-  "Doigt",
-  "Secteur",
-]);
+const ENTITY_HEADERS = new Set(["Nom", "Système", "Organe", "Doigt", "Secteur"]);
 const MINIMUM_METRICS = 10;
 const TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
 
-export function parseBiowellReport(
-  fileName: string,
-  text: string,
-): ParsedReport {
+export function parseBiowellReport(fileName: string, text: string): ParsedReport {
   try {
     return parseBiowellReportFromRows(fileName, parseCsv(text));
   } catch (error) {
-    throw new Error(
-      error instanceof Error ? error.message : "lecture impossible",
-    );
+    throw new Error(error instanceof Error ? error.message : "lecture impossible");
   }
 }
 
-export function parseBiowellReportFromRows(
-  fileName: string,
-  rows: string[][],
-): ParsedReport {
+export function parseBiowellReportFromRows(fileName: string, rows: string[][]): ParsedReport {
   if (rows.length === 0) throw new Error("fichier vide ou structure CSV invalide");
 
   const metrics = new Map<string, MetricValue>();
@@ -68,11 +54,7 @@ export function parseBiowellReportFromRows(
       }
     }
 
-    if (
-      rowIndex === 2 &&
-      timestampColumnIndex !== null &&
-      timestampColumnIndex < cells.length
-    ) {
+    if (rowIndex === 2 && timestampColumnIndex !== null && timestampColumnIndex < cells.length) {
       patientLabel = cells[timestampColumnIndex] || undefined;
     }
 
@@ -105,11 +87,7 @@ export function parseBiowellReportFromRows(
 
     numericIndexes.forEach((columnIndex) => {
       const value = parseFrenchNumber(cells[columnIndex]);
-      const sourceColumn = resolveSourceColumn(
-        currentSection,
-        currentHeaders,
-        columnIndex,
-      );
+      const sourceColumn = resolveSourceColumn(currentSection, currentHeaders, columnIndex);
       const sourceLabel = resolveSourceLabel(currentSection, cells, rowGroup);
       const key = buildMetricKey({
         section: currentSection,
@@ -120,9 +98,7 @@ export function parseBiowellReportFromRows(
       });
 
       if (metrics.has(key)) {
-        throw new Error(
-          `ambiguïté de clé impossible à résoudre ligne ${rowIndex} (${key})`,
-        );
+        throw new Error(`ambiguïté de clé impossible à résoudre ligne ${rowIndex} (${key})`);
       }
 
       metrics.set(key, {
@@ -137,9 +113,7 @@ export function parseBiowellReportFromRows(
   });
 
   if (metrics.size < MINIMUM_METRICS) {
-    throw new Error(
-      `pas assez de paramètres numériques exploitables (${metrics.size})`,
-    );
+    throw new Error(`pas assez de paramètres numériques exploitables (${metrics.size})`);
   }
 
   return {
@@ -157,9 +131,7 @@ function normalizeRow(row: string[]): string[] {
 
 function looksLikeHeader(cells: string[]): boolean {
   const nonEmpty = cells.filter(Boolean);
-  return (
-    nonEmpty.length > 1 || nonEmpty.some((cell) => ENTITY_HEADERS.has(cell))
-  );
+  return nonEmpty.length > 1 || nonEmpty.some((cell) => ENTITY_HEADERS.has(cell));
 }
 
 function isNumericCell(cell: string): boolean {
@@ -184,47 +156,34 @@ function findTimestampCell(cells: string[]): { index: number; value: string } | 
 export function parseFrenchNumber(cell: string): number {
   const normalized = cell.trim();
   if (normalized === "-") return 0;
-  if (!isNumericCell(normalized))
-    throw new Error(`valeur non numérique inattendue : ${cell}`);
+  if (!isNumericCell(normalized)) throw new Error(`valeur non numérique inattendue : ${cell}`);
   return Number(normalized.replace(",", "."));
 }
 
 function ensureExpectedNumericColumnsAreNumeric(
   cells: string[],
   headers: string[],
-  rowIndex: number,
+  rowIndex: number
 ): void {
   headers.forEach((header, index) => {
     if (!header || ENTITY_HEADERS.has(header)) return;
     const value = cells[index];
     if (value && !isNumericCell(value)) {
-      throw new Error(
-        `valeur non numérique inattendue ligne ${rowIndex}, colonne ${header}`,
-      );
+      throw new Error(`valeur non numérique inattendue ligne ${rowIndex}, colonne ${header}`);
     }
   });
 }
 
-function resolveSourceColumn(
-  section: string,
-  headers: string[],
-  columnIndex: number,
-): string {
+function resolveSourceColumn(section: string, headers: string[], columnIndex: number): string {
   const header = headers[columnIndex];
   if (header && !ENTITY_HEADERS.has(header)) return header;
-  if (section === "Paramètres" || section === "Champs d'énergie")
-    return "Valeur";
+  if (section === "Paramètres" || section === "Champs d'énergie") return "Valeur";
   return `Colonne ${columnIndex + 1}`;
 }
 
-function resolveSourceLabel(
-  section: string,
-  cells: string[],
-  group: string,
-): string {
+function resolveSourceLabel(section: string, cells: string[], group: string): string {
   if (section === "Organes et systèmes") return cells[1] || "Système";
-  if (section === "Les doigts et les secteurs")
-    return cells[1] || "Image entière";
+  if (section === "Les doigts et les secteurs") return cells[1] || "Image entière";
   return cells[1] || cells[0] || group || "Mesure";
 }
 
@@ -238,8 +197,7 @@ function buildMetricKey(input: {
   const { section, subsection, group, label, sourceColumn } = input;
 
   if (section === "Paramètres") return joinKey(section, label, "Valeur");
-  if (section === "Champs d'énergie")
-    return joinKey(section, subsection || group || label, label);
+  if (section === "Champs d'énergie") return joinKey(section, subsection || group || label, label);
   if (section === "Organes et systèmes")
     return joinKey(section, group || label, label, sourceColumn);
   if (section === "Les doigts et les secteurs")

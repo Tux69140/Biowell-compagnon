@@ -10,10 +10,7 @@ export type DetailedRow = {
   closestFile: string;
 };
 
-export function buildDetailedRows(
-  means: MeanMetric[],
-  reports: ParsedReport[],
-): DetailedRow[] {
+export function buildDetailedRows(means: MeanMetric[], reports: ParsedReport[]): DetailedRow[] {
   const fileNames = reports.map((report) => report.fileName);
 
   return means.map((mean) => {
@@ -43,10 +40,7 @@ export function buildDetailedRows(
   });
 }
 
-export function exportDetailedCsv(
-  rows: DetailedRow[],
-  fileNames: string[],
-): string {
+export function exportDetailedCsv(rows: DetailedRow[], fileNames: string[]): string {
   const header = [
     "cle",
     "section",
@@ -67,15 +61,10 @@ export function exportDetailedCsv(
     row.closestFile,
   ]);
 
-  return [header, ...lines]
-    .map((line) => line.map(escapeCsvCell).join(";"))
-    .join("\n");
+  return [header, ...lines].map((line) => line.map(escapeCsvCell).join(";")).join("\n");
 }
 
-export function exportDetailedXls(
-  rows: DetailedRow[],
-  fileNames: string[],
-): string {
+export function exportDetailedXls(rows: DetailedRow[], fileNames: string[]): string {
   const columns = [
     "cle",
     "section",
