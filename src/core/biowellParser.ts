@@ -20,7 +20,9 @@ export function parseBiowellReport(fileName: string, text: string): ParsedReport
   try {
     return parseBiowellReportFromRows(fileName, parseCsv(text));
   } catch (error) {
-    throw new Error(error instanceof Error ? error.message : "lecture impossible");
+    throw new Error(error instanceof Error ? error.message : "lecture impossible", {
+      cause: error,
+    });
   }
 }
 

@@ -322,7 +322,6 @@ button.secondary {
   .hero-card {
     grid-template-columns: 1fr;
   }
-  margin-top: 0.85rem;
 }
 
 @media (max-width: 980px) {
